@@ -51,7 +51,7 @@ def floodfill(start, grid, info):
                     if x + dx < 0 or x + dx >= len(grid[0]):
                         continue
                     for dy in range(-1, 2):
-                        if not dx == dy == 0 and 0 <= y + dy <= len(grid):
+                        if not dx == dy == 0 and 0 <= y + dy < len(grid):
                             to_expand.append((x + dx, y + dy))
 
 
@@ -78,6 +78,7 @@ flag = pygame.image.load('flag.png')
 
 screen = pygame.display.set_mode((width * 24 - 3, height * 24 - 3))
 pygame.display.set_caption('Minesweeper')
+pygame.display.set_icon(bomb)
 
 while True:
     for event in pygame.event.get():
@@ -91,12 +92,12 @@ while True:
                 if event.button == 1:
                     # Not flagged and not revealed
                     if not board_info[click_y][click_x][0] and not board_info[click_y][click_x][1]:
-                        try:
+                        if board[click_y][click_x] == -1:
+                            for i in board_info:
+                                for j in i:
+                                    j[0] = True
+                        else:
                             floodfill((click_x, click_y), board, board_info)
-                        except Exception as e:
-                            print(event, click_x, click_y)
-                            raise e
-                        board_info[click_y][click_x][0] = True
                 elif event.button == 3:
                     if not board_info[click_y][click_x][0]:
                         # Places/removes flag

@@ -4,7 +4,7 @@ import random
 
 def generate_board(w, h, mines):
     new_board = [[0 for _ in range(w)] for _ in range(h)]
-    info = [[(False, False) for _ in range(w)] for _ in range(h)]
+    info = [[[False, False] for _ in range(w)] for _ in range(h)]
     mine_positions = random.sample(range(w * h), mines)
 
     for position in mine_positions:
@@ -18,21 +18,41 @@ def generate_board(w, h, mines):
     return new_board, info
 
 
-def draw(board, info,  screen):
+def draw(grid, info,  screen):
     screen.fill((181, 181, 181))
-    for y, row in enumerate(board):
+    for y, row in enumerate(grid):
         for x, cell in enumerate(row):
             if info[y][x][0]:
                 if cell >= 1:
                     screen.blit(number_images[cell - 1], (x * 24, y * 24))
-            elif info[y][x][1]:
-                screen.blit(flag, (x * 24, y * 24))
+                elif cell == -1:
+                    screen.blit(bomb, (x * 24, y * 24))
+            else:
+                pygame.draw.rect(screen, (255, 255, 255), (x * 24, y * 24, 21, 21))
+                pygame.draw.rect(screen, (210, 210, 210), (x * 24 + 3, y * 24 + 3, 18, 18))
+                if info[y][x][1]:
+                    screen.blit(flag, (x * 24, y * 24))
 
     for y in range(height - 1):
         pygame.draw.line(screen, (0, 0, 0), (0, y * 24 + 22), (width * 24, y * 24 + 22), 3)
 
     for x in range(width - 1):
         pygame.draw.line(screen, (0, 0, 0), (x * 24 + 22, 0), (x * 24 + 22, height * 24), 3)
+
+
+def floodfill(start, grid, info):
+    to_expand = [start]
+    while to_expand:
+        x, y = to_expand.pop(-1)
+        if not info[y][x][1] and not info[y][x][0]:
+            info[y][x][0] = True
+            if grid[y][x] == 0:
+                for dx in range(-1, 2):
+                    if x + dx < 0 or x + dx >= len(grid[0]):
+                        continue
+                    for dy in range(-1, 2):
+                        if not dx == dy == 0 and 0 <= y + dy <= len(grid):
+                            to_expand.append((x + dx, y + dy))
 
 
 width = int(input('Width: '))
@@ -59,8 +79,28 @@ flag = pygame.image.load('flag.png')
 screen = pygame.display.set_mode((width * 24 - 3, height * 24 - 3))
 pygame.display.set_caption('Minesweeper')
 
-draw(board, board_info, screen)
-pygame.display.flip()
-
 while True:
-    pygame.event.pump()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            quit()
+        elif event.type == pygame.MOUSEBUTTONUP:
+            click_x, click_y = event.pos
+            if click_x % 24 <= 21 and click_y % 24 <= 21:
+                click_x, click_y = click_x // 24, click_y // 24
+
+                if event.button == 1:
+                    # Not flagged and not revealed
+                    if not board_info[click_y][click_x][0] and not board_info[click_y][click_x][1]:
+                        try:
+                            floodfill((click_x, click_y), board, board_info)
+                        except Exception as e:
+                            print(event, click_x, click_y)
+                            raise e
+                        board_info[click_y][click_x][0] = True
+                elif event.button == 3:
+                    if not board_info[click_y][click_x][0]:
+                        # Places/removes flag
+                        board_info[click_y][click_x][1] = not board_info[click_y][click_x][1]
+
+    draw(board, board_info, screen)
+    pygame.display.flip()
